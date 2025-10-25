@@ -1,0 +1,59 @@
+{
+  "name": "swiftroute-backend",
+  "version": "1.0.0",
+  "description": "SwiftRoute Backend API",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev:direct": "ts-node src/server.ts",
+    "dev:clean": "lsof -ti:5000 | xargs kill -9 2>/dev/null; npm run dev",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "db:migrate": "dotenv -e .env -- npx prisma migrate dev",
+    "db:seed": "dotenv -e .env -- npx prisma db seed",
+    "db:studio": "dotenv -e .env -- npx prisma studio",
+    "db:reset": "dotenv -e .env -- npx prisma migrate reset"
+  },
+  "keywords": [
+    "delivery",
+    "routing",
+    "api"
+  ],
+  "author": "Manthan Sorkhade",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-validator": "^7.3.0",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "pg": "^8.16.3",
+    "redis": "^5.9.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.18.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.4",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.9.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "dotenv-cli": "^10.0.0",
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
+    "prisma": "^6.18.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
