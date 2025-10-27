@@ -1,0 +1,4 @@
+Order Number,Customer Name,Phone,Email,Address,City,Postal Code,Priority,Notes
+ORD-101,John Doe,+1234567890,john@example.com,123 Main St,New York,10001,NORMAL,Leave at door
+ORD-102,Jane Smith,+1234567891,jane@example.com,456 Oak Ave,New York,10002,HIGH,Call on arrival
+ORD-103,Bob Johnson,+1234567892,bob@example.com,789 Pine Rd,Brooklyn,11201,URGENT,Fragile items

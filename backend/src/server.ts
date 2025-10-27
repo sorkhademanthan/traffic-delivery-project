@@ -6,6 +6,7 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import { testDatabaseConnection } from './utils/testDb';
 import authRoutes from './routes/authRoutes';
+import orderRoutes from './routes/orderRoutes';
 
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
+app.use('/api/orders', orderRoutes);
 
 
 app.get('/api/health', (req: Request, res: Response) => {
