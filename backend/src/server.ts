@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import { testDatabaseConnection } from './utils/testDb';
 import authRoutes from './routes/authRoutes';
 import orderRoutes from './routes/orderRoutes';
+import driverRoutes from './routes/driverRoutes';
+
 
 
 dotenv.config();
@@ -22,6 +24,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/drivers', driverRoutes);
 
 
 app.get('/api/health', (req: Request, res: Response) => {
