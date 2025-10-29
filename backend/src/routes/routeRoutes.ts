@@ -10,6 +10,8 @@ import {
   startRoute,
   completeRoute,
   getRouteStats,
+  optimizeRoute,
+
 } from '../controllers/routeController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -28,6 +30,7 @@ router.delete('/:id', deleteRoute);
 
 // Route operations
 router.post('/:id/assign-orders', assignOrdersToRoute);
+router.post('/:id/optimize', optimizeRoute);
 router.patch('/:id/start', startRoute);
 router.patch('/:id/complete', completeRoute);
 

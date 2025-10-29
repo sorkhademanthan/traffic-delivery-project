@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { Prisma, RouteStatus, DriverStatus, OrderStatus } from '@prisma/client';
+import { optimizeRouteNearestNeighbor, Location } from '../utils/routeOptimizer';
 
 // Create new route
 export const createRoute = async (req: Request, res: Response): Promise<void> => {
@@ -540,5 +541,119 @@ export const getRouteStats = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('Get route stats error:', error);
     res.status(500).json({ error: 'Failed to fetch route statistics' });
+  }
+};
+
+export const optimizeRoute = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    console.log(`📊 Optimization requested for route: ${id}`);
+
+    // Fetch route with all stops
+    const route = await prisma.route.findUnique({
+      where: { id },
+      include: {
+        stops: {
+          include: {
+            order: true,
+          },
+          orderBy: { sequence: 'asc' },
+        },
+      },
+    });
+
+    if (!route) {
+      res.status(404).json({ error: 'Route not found' });
+      return;
+    }
+
+    if (route.stops.length === 0) {
+      res.status(400).json({ error: 'Cannot optimize route with no stops' });
+      return;
+    }
+
+    // Don't optimize completed routes
+    if (route.status === 'COMPLETED') {
+      res.status(400).json({ error: 'Cannot optimize completed route' });
+      return;
+    }
+
+    // Filter stops with valid coordinates
+    const validStops = route.stops.filter(
+      (stop) =>
+        stop.order.latitude !== null &&
+        stop.order.longitude !== null
+    );
+
+    if (validStops.length === 0) {
+      res.status(400).json({
+        error: 'No stops have GPS coordinates. Please add coordinates to orders first.',
+      });
+      return;
+    }
+
+    if (validStops.length < route.stops.length) {
+      console.log(`⚠️  Warning: ${route.stops.length - validStops.length} stops missing coordinates`);
+    }
+
+    // Prepare locations for optimization
+    const locations: Location[] = validStops.map((stop) => ({
+      id: stop.orderId,
+      orderNumber: stop.order.orderNumber,
+      address: stop.order.address,
+      latitude: stop.order.latitude!,
+      longitude: stop.order.longitude!,
+    }));
+
+    // Run optimization
+    const optimizedResult = optimizeRouteNearestNeighbor(locations);
+
+    // Update route stops with new sequence
+    console.log('💾 Updating database with optimized sequence...');
+    
+    for (let i = 0; i < optimizedResult.sequence.length; i++) {
+      const orderId = optimizedResult.sequence[i];
+      const stop = route.stops.find((s) => s.orderId === orderId);
+
+      if (stop) {
+        await prisma.routeStop.update({
+          where: { id: stop.id },
+          data: { sequence: i + 1 },
+        });
+      }
+    }
+
+    // Update route with optimization results
+    const updatedRoute = await prisma.route.update({
+      where: { id },
+      data: {
+        totalDistance: optimizedResult.totalDistance,
+        estimatedDuration: optimizedResult.estimatedDuration,
+      },
+      include: {
+        driver: true,
+        stops: {
+          include: { order: true },
+          orderBy: { sequence: 'asc' },
+        },
+      },
+    });
+
+    console.log('✅ Route optimization complete and saved!');
+
+    res.json({
+      message: 'Route optimized successfully',
+      route: updatedRoute,
+      optimization: {
+        totalDistance: optimizedResult.totalDistance,
+        estimatedDuration: optimizedResult.estimatedDuration,
+        stopsOptimized: optimizedResult.sequence.length,
+        algorithm: optimizedResult.algorithm,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Optimize route error:', error);
+    res.status(500).json({ error: 'Failed to optimize route' });
   }
 };
