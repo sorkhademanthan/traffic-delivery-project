@@ -551,7 +551,268 @@ curl -s "http://localhost:5001/api/routes/$ROUTE_ID" \
 }
 ```
 
-**Server Console Output:**
+**Server Console Output:**// Schema version: v2.0.0 (Enhanced with production best practices)
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["extendedWhereUnique"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed password
+  name      String
+  role      UserRole @default(ADMIN)
+  isActive  Boolean  @default(true)
+  deletedAt DateTime?
+  lastUpdatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@index([email])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+// ============================================
+// DRIVERS
+// ============================================
+
+model Driver {
+  id          String       @id @default(cuid())
+  name        String
+  email       String       @unique
+  phone       String
+  licenseNo   String?
+  vehicleType VehicleType  @default(VAN)
+  status      DriverStatus @default(AVAILABLE)
+  isActive    Boolean      @default(true)
+  deletedAt   DateTime?
+  lastUpdatedBy String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  routes Route[]
+
+  @@index([email])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("drivers")
+}
+
+enum VehicleType {
+  BIKE
+  SCOOTER
+  CAR
+  VAN
+  TRUCK
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_ROUTE
+  OFF_DUTY
+  UNAVAILABLE
+}
+
+// ============================================
+// ORDERS
+// ============================================
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+  customerName      String
+  customerPhone     String
+  customerEmail     String?
+  address           String
+  addressLine2      String?
+  city              String
+  postalCode        String
+  latitude          Decimal?    @db.Decimal(10, 7)
+  longitude         Decimal?    @db.Decimal(10, 7)
+  deliveryNotes     String?
+  orderValue        Decimal?    @db.Decimal(10, 2)
+  priority          Priority    @default(NORMAL)
+  timeWindow        String?     // e.g., "09:00-12:00"
+  status            OrderStatus @default(PENDING)
+  deletedAt         DateTime?
+  lastUpdatedBy     String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  routeStop         RouteStop?
+  deliveryAttempts  DeliveryAttempt[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([city, postalCode])
+  @@index([deletedAt])
+  @@map("orders")
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum OrderStatus {
+  PENDING
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// ROUTES & STOPS
+// ============================================
+
+model Route {
+  id                String      @id @default(cuid())
+  routeNumber       String      @unique
+  driverId          String
+  date              DateTime    @default(now()) @db.Date
+  status            RouteStatus @default(PENDING)
+  totalDistance     Decimal?    @db.Decimal(10, 2)
+  estimatedDuration Int?
+  actualDuration    Int?
+  startTime         DateTime?
+  endTime           DateTime?
+  notes             String?
+  deletedAt         DateTime?
+  lastUpdatedBy     String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  driver            Driver      @relation(fields: [driverId], references: [id])
+  stops             RouteStop[]
+
+  @@unique([driverId, date, deletedAt])
+  @@index([driverId, status])
+  @@index([date])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("routes")
+}
+
+enum RouteStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  PARTIAL
+}
+
+model RouteStop {
+  id              String         @id @default(cuid())
+  routeId         String
+  orderId         String         @unique
+  sequence        Int
+  status          StopStatus     @default(PENDING)
+  estimatedTime   DateTime?
+  actualTime      DateTime?
+  distanceFromPrevious Decimal?  @db.Decimal(10, 2)
+  durationFromPrevious Int?
+  latitude        Decimal?       @db.Decimal(10, 7)
+  longitude       Decimal?       @db.Decimal(10, 7)
+  deletedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  route           Route          @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  order           Order          @relation(fields: [orderId], references: [id])
+
+  @@index([routeId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("route_stops")
+}
+
+enum StopStatus {
+  PENDING
+  EN_ROUTE
+  ARRIVED
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+// ============================================
+// DELIVERY ATTEMPTS
+// ============================================
+
+model DeliveryAttempt {
+  id          String         @id @default(cuid())
+  orderId     String
+  attemptedAt DateTime       @default(now())
+  result      AttemptResult
+  reason      String?
+  notes       String?
+  photoUrl    String?
+  signatureUrl String?
+  latitude    Decimal?       @db.Decimal(10, 7)
+  longitude   Decimal?       @db.Decimal(10, 7)
+
+  order       Order          @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([attemptedAt])
+  @@map("delivery_attempts")
+}
+
+enum AttemptResult {
+  SUCCESS
+  FAILED_NO_ANSWER
+  FAILED_WRONG_ADDRESS
+  FAILED_REFUSED
+  FAILED_OTHER
+}
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  entityType  String
+  entityId    String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
 ```
 🔄 Optimizing route with 3 stops...
    Start: ORD-001

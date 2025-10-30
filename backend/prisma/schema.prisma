@@ -1,5 +1,8 @@
+// Schema version: v2.0.0 (Enhanced with production best practices)
+
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["extendedWhereUnique"]
 }
 
 datasource db {
@@ -14,15 +17,19 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String
+  password  String   // Hashed password
   name      String
   role      UserRole @default(ADMIN)
   isActive  Boolean  @default(true)
+  deletedAt DateTime?
+  lastUpdatedBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   auditLogs AuditLog[]
 
+  @@index([email])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -45,11 +52,16 @@ model Driver {
   vehicleType VehicleType  @default(VAN)
   status      DriverStatus @default(AVAILABLE)
   isActive    Boolean      @default(true)
+  deletedAt   DateTime?
+  lastUpdatedBy String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   routes Route[]
 
+  @@index([email])
+  @@index([status])
+  @@index([deletedAt])
   @@map("drivers")
 }
 
@@ -82,13 +94,15 @@ model Order {
   addressLine2      String?
   city              String
   postalCode        String
-  latitude          Float?
-  longitude         Float?
+  latitude          Decimal?    @db.Decimal(10, 7)
+  longitude         Decimal?    @db.Decimal(10, 7)
   deliveryNotes     String?
-  orderValue        Float?
+  orderValue        Decimal?    @db.Decimal(10, 2)
   priority          Priority    @default(NORMAL)
-  timeWindow        String?
+  timeWindow        String?     // e.g., "09:00-12:00"
   status            OrderStatus @default(PENDING)
+  deletedAt         DateTime?
+  lastUpdatedBy     String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -97,6 +111,8 @@ model Order {
 
   @@index([status])
   @@index([createdAt])
+  @@index([city, postalCode])
+  @@index([deletedAt])
   @@map("orders")
 }
 
@@ -124,23 +140,27 @@ model Route {
   id                String      @id @default(cuid())
   routeNumber       String      @unique
   driverId          String
-  date              DateTime    @default(now())
+  date              DateTime    @default(now()) @db.Date
   status            RouteStatus @default(PENDING)
-  totalDistance     Float?
+  totalDistance     Decimal?    @db.Decimal(10, 2)
   estimatedDuration Int?
   actualDuration    Int?
   startTime         DateTime?
   endTime           DateTime?
   notes             String?
+  deletedAt         DateTime?
+  lastUpdatedBy     String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
   driver            Driver      @relation(fields: [driverId], references: [id])
   stops             RouteStop[]
 
-  @@index([driverId])
+  @@unique([driverId, date, deletedAt])
+  @@index([driverId, status])
   @@index([date])
   @@index([status])
+  @@index([deletedAt])
   @@map("routes")
 }
 
@@ -160,10 +180,11 @@ model RouteStop {
   status          StopStatus     @default(PENDING)
   estimatedTime   DateTime?
   actualTime      DateTime?
-  distanceFromPrevious Float?
+  distanceFromPrevious Decimal?  @db.Decimal(10, 2)
   durationFromPrevious Int?
-  latitude        Float?
-  longitude       Float?
+  latitude        Decimal?       @db.Decimal(10, 7)
+  longitude       Decimal?       @db.Decimal(10, 7)
+  deletedAt       DateTime?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -172,6 +193,7 @@ model RouteStop {
 
   @@index([routeId])
   @@index([status])
+  @@index([deletedAt])
   @@map("route_stops")
 }
 
@@ -197,12 +219,13 @@ model DeliveryAttempt {
   notes       String?
   photoUrl    String?
   signatureUrl String?
-  latitude    Float?
-  longitude   Float?
+  latitude    Decimal?       @db.Decimal(10, 7)
+  longitude   Decimal?       @db.Decimal(10, 7)
 
   order       Order          @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
+  @@index([attemptedAt])
   @@map("delivery_attempts")
 }
 
@@ -233,6 +256,7 @@ model AuditLog {
 
   @@index([userId])
   @@index([action])
+  @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
 }

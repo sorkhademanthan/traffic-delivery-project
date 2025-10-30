@@ -1,18 +1,21 @@
 {
-  "name": "swiftroute-backend",
+    "name": "swiftroute-backend",
   "version": "1.0.0",
   "description": "SwiftRoute Backend API",
-  "main": "dist/server.js",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "dev:direct": "ts-node src/server.ts",
-    "dev:clean": "lsof -ti:5000 | xargs kill -9 2>/dev/null; npm run dev",
+    "dev:clean": "lsof -ti:5001 | xargs kill -9 2>/dev/null; npm run dev",
     "build": "tsc",
     "start": "node dist/server.js",
-    "db:migrate": "dotenv -e .env -- npx prisma migrate dev",
+    "db:migrate": "npx prisma migrate dev",
+    "db:migrate:prod": "npx prisma migrate deploy",
     "db:seed": "npx prisma db seed",
     "db:studio": "npx prisma studio",
-    "db:reset": "npx prisma migrate reset"
+    "db:reset": "npx prisma migrate reset",
+    "db:generate": "npx prisma generate",
+    "db:push": "npx prisma db push"
   },
   "keywords": [
     "delivery",
